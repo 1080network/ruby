@@ -1,0 +1,7 @@
+/pkg/
+/vendor/
+Gemfile.lock
+Gemfile.oldest.lock
+.bundle/
+.DS_Store
+.idea/

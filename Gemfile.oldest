@@ -1,0 +1,13 @@
+# The oldest versions of the runtime dependencies the gems declare support for; CI runs the tests against these too.
+source "https://rubygems.org"
+
+gem "google-protobuf", "4.32.0"
+gem "grpc", "1.74.0"
+gem "mica-common", path: "common"
+gem "mica-issuer", path: "issuer"
+gem "mica-acceptor", path: "acceptor"
+
+group :test do
+  gem "minitest"
+  gem "rake"
+end

@@ -1,0 +1,42 @@
+name: Publish gems
+
+# Builds and pushes mica-common, mica-issuer and mica-acceptor to GitHub Packages when a release is published.
+# The release tag is the version, for example v2.0.0-pre0 (published as 2.0.0.pre0).
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: Check the release tag matches the gem version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          EXPECTED=$(ruby -e 'puts ARGV[0].sub(/-pre(\d+)\z/, ".pre\\1")' "$TAG")
+          for g in common issuer acceptor; do
+            VERSION=$(ruby -e 'puts Gem::Specification.load(ARGV[0]).version.to_s' "$g/mica-$g.gemspec")
+            if [ "$VERSION" != "$EXPECTED" ]; then
+              echo "Release tag $GITHUB_REF_NAME ($EXPECTED) does not match mica-$g version $VERSION" >&2
+              exit 1
+            fi
+          done
+      - run: bundle exec rake test
+      - name: Build and push (common first; the role gems depend on it)
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ~/.gem
+          printf -- "---\n:github: Bearer %s\n" "$GEM_HOST_API_KEY" > ~/.gem/credentials
+          chmod 0600 ~/.gem/credentials
+          for g in common issuer acceptor; do
+            (cd "$g" && gem build "mica-$g.gemspec" && gem push --key github --host https://rubygems.pkg.github.com/1080network mica-$g-*.gem)
+          done
